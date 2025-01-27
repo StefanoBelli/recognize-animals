@@ -4,6 +4,10 @@
 \usepackage[italian]{babel}
 \usepackage{graphicx}
 \usepackage[font=tiny,labelfont=bf]{caption}
+\usepackage{xcolor}
+\usepackage{pifont}
+\usepackage{tikz}
+\usetikzlibrary{positioning, arrows.meta}
 
 \usetheme{Boadilla}
 
@@ -21,6 +25,31 @@
 \renewcommand{\footnotesize}{\tiny}
 
 \setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{enumerate items}[default]
+
+\colorlet{softgreen}{green!60!black} 
+
+\newcommand{\nocross}{{\color{red} \ding{55}}}
+\newcommand{\okmark}{{\color{softgreen} \ding{51}}}
+
+\newcommand{\dnnarch}[1]{
+    \tikzset{
+    	node/.style={draw, minimum width=4.2cm},
+    	data/.style={align=center, minimum width=4.2cm}
+	}
+
+	\begin{tikzpicture}[node distance=0.35cm, auto, >=latex]
+  		\node[data](data) {\footnotesize immagine 319x319 RGB};
+    	\foreach \nd/\td/\cd [remember=\nd as \Nd (initially data)] in #1 {
+        	\node [node, align=center, fill=\cd, below=of \Nd] (\nd) {\td};
+        	\draw[->](\Nd)--(\nd);
+    	}
+    	\node[data, below=of out] (Data) {\footnotesize vettore di 10 probabilità};
+    	\draw[->](out)--(Data);
+    	
+	\end{tikzpicture}
+}
+	
 
 \begin{document}
 
@@ -33,49 +62,235 @@
     \tableofcontents
 \end{frame}
 
-\section{Serverless SAGA pattern}
+\section{Il problema da affrontare}
 \begin{frame}
-
-\end{frame}
-
-\section{Servizi AWS utilizzati}
-\begin{frame}
-
-\end{frame}
-
-\section{Tabelle DynamoDB}
-\begin{frame}
-
-\end{frame}
-
-\section{Lambda di autorizzazione}
-\begin{frame}
+    \frametitle{Il problema da affrontare}
+    
+    %\fontsize{9pt}{10pt}\selectfont
+    Si richiede di progettare un classificatore di immagini di animali tramite
+    modelli preaddestrati, sfruttando il \textbf{transfer learning} e la \textbf{quantizzazione}.
+    
+    \dflvspace
+    
+    Per questo progetto, è importante tenere conto sia dell'\textbf{accuratezza} del modello
+    che dei \textbf{costi computazionali}.
+    
+    \dflvspace
+    
+    Verranno confrontati due modelli con e senza
+    quantizzazione tenendo conto delle seguenti metriche:
+    
+    \dflvspace
+    
+    \begin{itemize}
+    	\item Loss e accuracy del modello
+    	\item Tempo di inferenza del modello
+    	\item Grandezza del modello ottenuto
+    \end{itemize}
     
 \end{frame}
 
-\section{Lambda di validazione}
+\section{Transfer learning}
 \begin{frame}
+    \frametitle{Transfer learning}
+    
+    Addestrare modelli di deep learning in modo efficiente non è affatto semplice:
+    \begin{enumerate}
+    	\item Hardware potente e costoso richiesto
+    	\item Tempi di addestramento del modello elevati
+    	\item Costi per l'energia eccessivi
+    	\item Mancanza di dati per l'addestramento
+    	\item Progettare una rete da zero
+    \end{enumerate}
+    
+    \dflvspace
+    
+    \begin{exampleblock}{Applicazione}
+    E' possibile sfruttare modelli preaddestrati complessi, già testati e perfettamente funzionanti e "trasferirli" al
+    nostro problema congelandone i pesi (\textit{"trained weights"}), lasciando "addestrabili" solo i pesi di una rete neurale densa che è il
+    classificatore rimpiazzato dal nostro.
+    \end{exampleblock}
+\end{frame}
+
+\section{DNNs e dispositivi embedded}
+\begin{frame}
+    \frametitle{DNNs e dispositivi embedded}
+    
+    Pensiamo all'IoT e alla diffusione capillare di dispositivi embedded, ad esempio una telecamera: e se volessimo
+    integrare una rete convoluzionale nel device stesso?
+    \begin{itemize}
+    	\item Preserveremmo la privacy dell'utente
+    	\item Niente problemi di latenze elevate o legate al trasferimento dati
+    	\item Se la telecamera viene disconnessa da internet, la rete può continuare a svolgere il suo compito, rendendo il dispositivo
+    	più affidabile
+    \end{itemize}
+    
+    \dflvspace
+    
+    Il problema nell'eseguire le reti neurali su tali dispositivi è ovvia: la poca potenza a disposizione 
+    impatta sui tempi di \textbf{inferenza} del modello e sulla \textbf{memorizzazione} 
+    (sia in memoria primaria che secondaria) dei pesi del modello, oltre al fatto che il dispositivo potrebbe \underline{non avere
+    capacità di calcolo in virgola mobile} (es. non ha una FPU o ISA che supporti operazioni floating point).
 
 \end{frame}
 
-\section{Lambda di trasformazione}
+\section{Quantizzazione}
 \begin{frame}
-
+	\frametitle{Quantizzazione}
+	
+	Una tecnica che consente di ridurre la dimensione dei parametri di un modello:
+	\begin{itemize}
+		\item Meno \textbf{storage} richiesto per mantenere i parametri della rete
+		\item Reappresentare un parametro da \texttt{float} $\rightarrow$ \texttt{int8\_t} significa niente
+		operazioni floating point e quindi \textbf{tempi} di inferenza minori
+	\end{itemize}
+	
+	\dflvspace
+	
+	La tecnica non impatta significativamente sull'accuratezza del modello originale: l'alta precisione
+	di un \texttt{float} o \texttt{double} probabilmente non è necessaria per far si che il modello
+	svolga bene il suo lavoro.
+	
 \end{frame}
 
-\section{Lambda di store}
+\subsection{Quantizzazione post-training}
 \begin{frame}
-
+	\frametitle{Quantizzazione post-training}
+	
+	In particolare, nel progetto viene utilizzato TFLite/LiteRT e
+	quantizzazione post-training che permette di definire un modello Keras, 
+	addestrarlo normalmente, e solo dopo quantizzarlo.
+	
+	\dflvspace
+	
+	Dopo aver convertito il modello, è possibile applicare 
+	3 livelli di quantizzazione (incrementale)
+	
+	\dflvspace
+	
+	\begin{center}
+	\begin{table}
+	\begin{tabular}{|r|c|c|c|}
+	\hline
+	& \textbf{Param. fissati} & \textbf{Variabili} & \textbf{Tensori di I/O} \\
+	\hline
+	\hline
+	\textbf{Dynamic range} & \okmark & \nocross & \nocross \\
+	\hline
+	\textbf{Float fallback} & \okmark & \okmark & \nocross \\
+	\hline
+	\textbf{Integer-only} & \okmark & \okmark & \okmark \\
+	\hline
+	\end{tabular}
+	\caption{\okmark\;indica che avviene la quantizzazione, \nocross\;indica che non avviene}
+	\end{table}
+	\end{center}
+	
 \end{frame}
 
-\section{Lambda di flagging}
+\section{Split del dataset}
 \begin{frame}
-
+    \frametitle{Split del dataset}
+    
+    Il dataset fornito consiste in immagini di animali con etichette associate (10 classi),
+    pronto per essere letto e splittato da \texttt{keras.utils.image\_dataset\_from\_directory}
+    
+    \dflvspace
+    \dflvspace
+    
+    \begin{center}
+    \begin{tikzpicture}
+    
+    	\draw (0,0) -- (10,0);
+    	\draw (0,0) -- (0,1);
+    	\draw (0,1) -- (10,1);
+    	\draw (10,1) -- (10,0);
+    	
+    	\draw (6.5,0) -- (6.5,1) node[below, xshift=17pt, yshift=-27pt]{\tiny{Validation set (12\%)}};
+    	
+    	\draw (7.5,0) -- (7.5,1);
+    	
+    	\node at (3,0.5) {\tiny{Training set (68\%)}};
+    	\node at (8.75, 0.5) {\tiny{Testing set (20\%)}};
+    	
+    \end{tikzpicture}
+    \end{center}
+    
+    \dflvspace
+    \dflvspace
+    
+    \begin{itemize}
+    	\item Il \textbf{training set} viene utilizzato per l'addestramento dei modelli
+    	\item Il \textbf{validation set} viene usato ogni 3 epoche di addestramento e mostrare esempi di predizione
+    	\item Il \textbf{testing set} viene usato per effettuare le misurazioni finali
+    \end{itemize}
     
 \end{frame}
 
-\section{State machine}
+\section{Architettura dei modelli analizzati}
 \begin{frame}
+    \frametitle{Architettura dei modelli analizzati}
+    
+    I due modelli pretrained scelti sono \texttt{MobileNet} e \texttt{InceptionResNetV2},
+    facilmente istanziati con i trained weights \texttt{imagenet} grazie a \texttt{keras.applications}
+    
+    \dflvspace
+    \dflvspace
+    
+    \begin{tabular}{c c}
+    
+    \def\firstlayers{
+    	a/\tiny{Rescaling in $$[\,-1\,\dots\,1\,]$$ - 0 - $319\times 319\times 3$ }/white,
+    	b/\tiny{MobileNet - $3.3M$ - $10\times 10\times 1024$}/cyan,
+    	c/\tiny{GlobalAvgPool - $0$ - $1024$}/white,
+    	d/\tiny{Dropout di $0.25$ - $0$ - $1024$}/white,
+    	out/\tiny{Dense (softmax) - $10k$ - $10$} /white}
+    
+	\dnnarch{\firstlayers}
+	
+	&
+	
+	\def\secondlayers{
+    	a/\tiny{Rescaling in $$[\,-1\,\dots\,1\,]$$ - 0 - $319\times 319\times 3$ }/white,
+    	b/\tiny{InceptionResNetV2 - $54.3M$ - $8\times 8\times 1536$}/cyan,
+    	c/\tiny{GlobalAvgPool - $0$ - $1536$}/white,
+    	d/\tiny{Dropout di $0.4$ - $0$ - $1536$}/white,
+    	out/\tiny{Dense (softmax) - $15k$ - $10$} /white}
+    
+	\dnnarch{\secondlayers}
+	
+	\end{tabular}
+    
+\end{frame}
+
+\section{Training}
+\begin{frame}
+    \frametitle{Training}
+    
+    
+\end{frame}
+
+\section{Riusabilità del codice}
+\begin{frame}
+    \frametitle{Riusabilità del codice}
+    
+\end{frame}
+
+\section{Evaluation dei modelli}
+\begin{frame}
+    \frametitle{Evaluation dei modelli}
+
+\end{frame}
+
+\section{Risultati ottenuti}
+\begin{frame}
+    \frametitle{Risultati ottenuti}
+
+\end{frame}
+
+\section{Conclusioni}
+\begin{frame}
+    \frametitle{Conclusioni}
 
 \end{frame}
 
