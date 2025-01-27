@@ -7,6 +7,39 @@
 \usepackage{xcolor}
 \usepackage{pifont}
 \usepackage{tikz}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{1,1,1}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    numbers=none,
+    basicstyle=\ttfamily\tiny,
+    aboveskip=0pt, % Spazio sopra il codice
+    belowskip=0pt, % Spazio sotto il codice
+    lineskip=0pt  % Riduzione spaziatura tra le righe
+}
+
+\lstset{style=mystyle}
+
 \usetikzlibrary{positioning, arrows.meta}
 
 \usetheme{Boadilla}
@@ -193,7 +226,7 @@
     \frametitle{Split del dataset}
     
     Il dataset fornito consiste in immagini di animali con etichette associate (10 classi),
-    pronto per essere letto e splittato da \texttt{keras.utils.image\_dataset\_from\_directory}
+    pronto per essere letto e splittato da \texttt{keras.utils.image\_dataset\_from\_directory}.
     
     \dflvspace
     \dflvspace
@@ -264,33 +297,146 @@
 \end{frame}
 
 \section{Training}
-\begin{frame}
+\begin{frame}[fragile]
     \frametitle{Training}
     
+    \begin{tabular}{l r}
     
+    \begin{minipage}[t] {0.5\textwidth}
+    \begin{lstlisting}[language=Python]
+# you may override this
+def compile_model(self, *args, **kwargs):
+	self.model.compile(
+		optimizer=keras.optimizers.Adam(),
+		loss=keras.losses.CategoricalCrossentropy(),
+		metrics=[
+			keras.metrics.CategoricalAccuracy()
+		])
+
+# you may override this
+def fit_model(self, *args, **kwargs):
+	return self.model.fit(
+		args[0],
+		validation_data=args[1],
+		validation_freq=3,
+		epochs=40,
+		callbacks=[
+			keras.callbacks.EarlyStopping(
+				start_from_epoch=3,
+				patience=2,
+				restore_best_weights=True),
+			keras.callbacks.LearningRateScheduler(
+				lambda e, l: l if e < 1 else l * np.exp(-0.15)
+		)])
+    \end{lstlisting}
+    \end{minipage}
+    
+    &
+    
+    \begin{minipage} [t] {0.5\textwidth}
+    		\fontsize{9pt}{10pt}\selectfont
+    		
+    		Compilazione del modello:
+    		\begin{itemize}
+      		\item Optimizer: adam
+      		\item Loss: categorical crossentropy
+      		\item Metrica d'interesse: categorical accuracy
+     	\end{itemize}
+     	
+     	\dflvspace
+     	\dflvspace
+     	
+     	E il suo addestramento:
+     	\begin{itemize}
+     		\item 40 epoche totali
+     		\item Validazione ogni 3 epoche
+     		\item Early stopping
+     		\begin{itemize}
+     			\item Pazienza 2
+     			\item Partenza da epoca 3
+     			\item Ripristino pesi migliori
+     			\item \texttt{val\_loss} monitorata
+     		\end{itemize}
+     		\item Decaying learning rate di \\ $exp(-0.15)$ dopo la prima epoca
+		\end{itemize}
+    \end{minipage}
+    \end{tabular}
 \end{frame}
 
-\section{Riusabilità del codice}
+\section{Conversione in modelli TFLite}
 \begin{frame}
-    \frametitle{Riusabilità del codice}
-    
+	\frametitle{Conversione in modelli TFLite}
+	
+	\begin{itemize}
+		\item Dopo la definizione del modello e il suo addestramento, è possibile
+		convertire il modello in tflite e avviare la quantizzazione.
+	
+		\item Nel progetto vengono provati tutti e 3 i livelli di quantizzazione offerti.
+	
+		\item Il modello viene salvato sul filesystem e quindi sarà possibile effettuare
+		la valutazione in seguito usando le utils di \texttt{tf.lite} per caricare il modello
+		in memoria e istanzizare un \texttt{tf.lite.Interpreter} su cui chiamare il metodo
+		\texttt{invoke} per fare inferenza.
+	
+		\item Data l'immediatezza di utilizzo, non è necessario effettuare nessuna azione sul modello originale,
+		pre o post quantizzazione, si può direttamente procedere con l'evaluation che ne risalterà i vantaggi
+	\end{itemize}
+	
 \end{frame}
 
 \section{Evaluation dei modelli}
 \begin{frame}
     \frametitle{Evaluation dei modelli}
+    
+    Dopo la validazione dei modelli (cambiando l'input shape, il batch size, 
+    il decaying lr, il dropout e/o l'architettura di rete in generale) l'evaluation finale
+    (sul testing set) viene effettuata tenendo conto sia del costo computazionale che 
+    dell'accuracy del modello.
+    
+    \dflvspace
+    
+    Dato l'obiettivo dell'evaluation e:
+    \begin{itemize}
+    		\item il fatto che vogliamo una stima dei costi che rifletta l'utilizzo reale
+    		\item il fatto che l'evaluate di tf/keras non fornisce informazioni affidabili sul tempo di inferenza
+    		\item l'evaluate di tf/keras processa elementi in batch
+    		\item l'utilizzo del profiler di tf non è necessario per il task
+    		\item il fatto che per tflite non esiste un metodo/funzione che misuri le prestazioni del modello,
+    		sia per quanto riguarda l'accuratezza che i costi computazionali\dots
+    		\item \dots e quindi bisogna scrivere una funzione di evaluate da zero per tflite
+	\end{itemize}
+\end{frame}
 
+\subsection{Metodo evaluate}
+\begin{frame}
+	\frametitle{Metodo evaluate}
+	
+	E' risultato conveniente scrivere un metodo evaluate univoco che misurasse loss, accuracy, inference time
+	allo stesso modo sia per modelli tf/keras che tflite.
+	
+	\dflvspace
+	
+	Per la loss e l'accuracy si utilizzano le classi:
+	\begin{itemize}
+		\item \texttt{keras.losses.CategoricalCrossentropy}
+		\item \texttt{keras.metrics.CategoricalAccuracy}
+	\end{itemize}
+	in modalità standalone: aggregando e calcolando i risultati al termine (o in iterazione intermedia per logging).
+	
+	\dflvspace
+	
+	Per riflettere l'utilizzo reale del modello, ai modelli tf viene passato un singolo elemento del testing set,
+	invocato il metodo \texttt{keras.Model.\_\_call\_\_} e quindi misurato il tempo di inferenza con un timer ad alta
+	risoluzione (\texttt{time.perf\_counter}). Stessa cosa per i modelli tflite, solo che viene invocato il metodo
+	\texttt{tf.lite.Interpreter.invoke} invece che la \texttt{\_\_call\_\_}. Dall'accumulo dei tempi di inferenza,
+	si ricava facilmente il tempo di inferenza medio.
 \end{frame}
 
 \section{Risultati ottenuti}
 \begin{frame}
     \frametitle{Risultati ottenuti}
-
-\end{frame}
-
-\section{Conclusioni}
-\begin{frame}
-    \frametitle{Conclusioni}
+    
+    % grandezza del modello ottenuta leggendo la grandezza del file dei pesi /modello tflite con funzione os.file....
 
 \end{frame}
 
