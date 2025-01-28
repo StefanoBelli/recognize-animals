@@ -369,7 +369,7 @@ def fit_model(self, *args, **kwargs):
 	
 	\begin{itemize}
 		\item Dopo la definizione del modello e il suo addestramento, è possibile
-		convertire il modello in tflite e avviare la quantizzazione.
+		\textit{convertire} il modello in tflite e avviare la \textit{quantizzazione}.
 	
 		\item Nel progetto vengono provati tutti e 3 i livelli di quantizzazione offerti.
 	
@@ -390,8 +390,8 @@ def fit_model(self, *args, **kwargs):
     
     Dopo la validazione dei modelli (cambiando l'input shape, il batch size, 
     il decaying lr, il dropout e/o l'architettura di rete in generale) l'evaluation finale
-    (sul testing set) viene effettuata tenendo conto sia del costo computazionale che 
-    dell'accuracy del modello.
+    (sul testing set) viene effettuata tenendo conto sia del \textbf{costo computazionale} che 
+    dell'\textbf{accuracy} del modello.
     
     \dflvspace
     
@@ -411,7 +411,7 @@ def fit_model(self, *args, **kwargs):
 \begin{frame}
 	\frametitle{Metodo evaluate}
 	
-	E' risultato conveniente scrivere un metodo evaluate univoco che misurasse loss, accuracy, inference time
+	E' risultato conveniente scrivere un metodo evaluate univoco che misurasse \textbf{loss}, \textbf{accuracy}, \textbf{inference time}
 	allo stesso modo sia per modelli tf/keras che tflite.
 	
 	\dflvspace
@@ -421,7 +421,7 @@ def fit_model(self, *args, **kwargs):
 		\item \texttt{keras.losses.CategoricalCrossentropy}
 		\item \texttt{keras.metrics.CategoricalAccuracy}
 	\end{itemize}
-	in modalità standalone: aggregando e calcolando i risultati al termine (o in iterazione intermedia per logging).
+	in \underline{modalità standalone}: aggregando e calcolando i risultati al termine (o in iterazione intermedia per logging).
 	
 	\dflvspace
 	
