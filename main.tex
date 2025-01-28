@@ -436,8 +436,102 @@ def fit_model(self, *args, **kwargs):
 \begin{frame}
     \frametitle{Risultati ottenuti}
     
+    \fontsize{6pt}{7pt}\selectfont
+    
+    \begin{center}
     % grandezza del modello ottenuta leggendo la grandezza del file dei pesi /modello tflite con funzione os.file....
-
+    \begin{tabular} { c c c }
+    		
+    		\begin{minipage}[t]{0.37\linewidth}
+    		\textbf{Loss e accuracy}
+    		
+    		\begin{tabular}{ | r | c | c | }
+    		\hline
+    		& \texttt{MN} & \texttt{IRNV2} \\
+    		\hline
+    		\hline
+    		\textbf{NQ} & 0.1141, 0.9650 & 0.0804, 0.9805 \\
+    		\hline
+    		\textbf{TL} & 0.1141, 0.9650 & 0.0804, 0.9805 \\
+    		\hline
+    		\textbf{DR} & 0.1195, 0.9617 & 0.0807, 0.9803 \\
+    		\hline
+    		\textbf{FF} & 0.1492, 0.9608 & 0.1028, 0.9803 \\
+    		\hline
+    		\textbf{IO} & 0.1473, 0.9604 & 0.1034, 0.9795 \\
+    		\hline
+    		\end{tabular}
+    		\end{minipage}
+    		
+    		&
+    		
+    		\begin{minipage}[t]{0.24\linewidth}
+    		\textbf{Avg. inference time}
+    		
+    		\begin{tabular}{ | r | c | c | }
+    		\hline
+    		& \texttt{MN} & \texttt{IRNV2} \\
+    		\hline
+    		\hline
+    		\textbf{NQ} & 60 ms & 581 ms \\
+    		\hline
+    		\textbf{TL} & 28 ms & 314 ms \\
+    		\hline
+    		\textbf{DR} & 35 ms & 308 ms \\
+    		\hline
+    		\textbf{FF} & 28 ms & 278 ms \\
+    		\hline
+    		\textbf{IO} & 28 ms & 279 ms \\
+    		\hline
+    		\end{tabular}
+    		\end{minipage}
+    		
+    		&
+    		
+    		\begin{minipage}[t]{0.35\linewidth}
+    		\textbf{Size [\texttt{get\_file\_size(weights\_file)}]}
+    		
+    		\begin{tabular}{ | r | c | c | }
+    		\hline
+    		& \texttt{MN} & \texttt{IRNV2} \\
+    		\hline
+    		\hline
+    		\textbf{NQ} & 12.67 MB & 209.34 MB \\
+    		\hline
+    		\textbf{TL} & 12.25 MB & 207.24 MB\\
+    		\hline
+    		\textbf{DR} & 3.24 MB & 53.01 MB \\
+    		\hline
+    		\textbf{FF} & 3.36 MB & 53.90 MB \\
+    		\hline
+    		\textbf{IO} & 3.36 MB & 53.90 MB \\
+    		\hline
+    		\end{tabular}
+    		\end{minipage}
+	\end{tabular}
+	\end{center}
+	
+	\dflvspace
+	
+	\fontsize{10pt}{11pt}\selectfont
+	
+	Per entrambi i casi:
+	\begin{itemize}
+		\item Dimezzamento dei tempi di inferenza
+			\begin{itemize}
+				\item Anche solo convertendo i modelli keras in tflite
+			\end{itemize}
+		\item $\displaystyle{\frac{1}{4}}$ della size originale
+		\item Prestazioni di accuratezza quasi intatte
+			\begin{itemize}
+				\item \texttt{InceptionResNetV2} subisce meno l'effetto della quantizzazione sull'accuratezza
+			\end{itemize}
+	\end{itemize}
+	
+	\dflvspace
+	
+	In conclusione, \texttt{MobileNet} è la scelta migliore per tempi di inferenza, grandezza del modello e accuratezza 
+	(quel $<2\%$ in più non vale la pena), in particolare con quantizzazione integer-only.
 \end{frame}
 
 \begin{frame}
