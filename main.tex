@@ -145,28 +145,6 @@
     \end{exampleblock}
 \end{frame}
 
-\section{DNNs e dispositivi embedded}
-\begin{frame}
-    \frametitle{DNNs e dispositivi embedded}
-    
-    Pensiamo all'IoT e alla diffusione capillare di dispositivi embedded, ad esempio una telecamera: e se volessimo
-    integrare una rete convoluzionale nel device stesso?
-    \begin{itemize}
-    	\item Preserveremmo la privacy dell'utente
-    	\item Niente problemi di latenze elevate o legate al trasferimento dati
-    	\item Se la telecamera viene disconnessa da internet, la rete può continuare a svolgere il suo compito, rendendo il dispositivo
-    	più affidabile
-    \end{itemize}
-    
-    \dflvspace
-    
-    Il problema nell'eseguire le reti neurali su tali dispositivi è ovvia: la poca potenza a disposizione 
-    impatta sui tempi di \textbf{inferenza} del modello e sulla \textbf{memorizzazione} 
-    (sia in memoria primaria che secondaria) dei pesi del modello, oltre al fatto che il dispositivo potrebbe \underline{non avere
-    capacità di calcolo in virgola mobile} (es. non ha una FPU o ISA che supporti operazioni floating point).
-
-\end{frame}
-
 \section{Quantizzazione}
 \begin{frame}
 	\frametitle{Quantizzazione}
